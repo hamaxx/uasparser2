@@ -1,28 +1,12 @@
 import json
 import time
-import random
 from uasparser2 import UASparser
 
-in_uas = json.load(open('uas.json', 'r'))
+test_uas = json.load(open('uas.json', 'r'))
 
 t0 = time.time()
-up = UASparser()
+up = UASparser(mem_cache_size=1000)
 print 'load:', time.time() - t0
-
-test_uas = []
-
-random.seed(123)
-test_list = in_uas.items()
-random.shuffle(test_list)
-
-for s in xrange(1, 2000):
-	limit = max(int(float(len(test_list)) / (s ** 0.9)), 1)
-	for i in xrange(0, limit):
-		ua = test_list[i]
-		test_uas.append(ua)
-
-random.seed(321)
-random.shuffle(test_uas)
 
 t0 = time.time()
 for uas, obj in test_uas:
@@ -37,3 +21,5 @@ for uas, obj in test_uas:
 
 print
 print 'parse:', time.time() - t0
+
+print 'cahce', up.cache_hit, up.cache_all
