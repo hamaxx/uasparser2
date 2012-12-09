@@ -42,6 +42,10 @@ class UASparser:
 	mem_cache = OrderedDict()
 	mem_cache_size = 1000
 
+	# for testing only
+	cache_hit = 0
+	cache_all = 0
+
 	empty_result = {
 		'typ':'unknown',
 		'ua_family':'unknown',
@@ -106,7 +110,9 @@ class UASparser:
 
 		def add_to_cache(result_dict, matched):
 			if matched:
+				self.cache_hit += 1
 				del self.mem_cache[useragent]
+			self.cache_all += 1
 
 			self.mem_cache[useragent] = result_dict
 
