@@ -1,8 +1,12 @@
+import os, sys
 import json
 import time
+
+sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
+
 from uasparser2 import UASparser
 
-test_uas = json.load(open('uas.json', 'r'))
+test_uas = json.load(open('test/uas.json', 'r'))
 
 t0 = time.time()
 up = UASparser(mem_cache_size=1000)
