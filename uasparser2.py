@@ -102,6 +102,7 @@ class UASparser:
 		Create an UASparser to parse useragent strings.
 		cache_dir should be appointed or set to the path of program by default
 		"""
+
 		self.cache_dir = cache_dir or os.path.abspath( os.path.dirname(__file__) )
 		if not os.access(self.cache_dir, os.W_OK):
 			raise UASException("Cache directory %s is not writable.")
@@ -116,7 +117,6 @@ class UASparser:
 		Get the information of an useragent string
 		Args:
 			useragent: String, an useragent string
-			entire_url: String, write the key labels which you want to get an entire url split by comma, expected 'ua_icon' or 'os_icon'.
 		"""
 
 		def match_robots(data, result):
@@ -167,10 +167,6 @@ class UASparser:
 		return result_dict
 
 	def _parseIniFile(self, file_content):
-		"""
-		Parse an ini file into a dictionary structure
-		"""
-
 		def toPythonReg(reg):
 			reg_l = reg[1:reg.rfind('/')]
 			reg_r = reg[reg.rfind('/')+1:]
@@ -287,17 +283,11 @@ class UASparser:
 		}
 
 	def _fetchURL(self, url):
-		"""
-		Get remote context by a given url
-		"""
 		resq = urllib2.Request(url)
 		context = urllib2.urlopen(resq)
 		return context.read()
 
 	def _checkCache(self):
-		"""
-		check whether the cache available or not?
-		"""
 		cache_file = self.cache_file_name
 		if not os.path.exists(cache_file):
 			return False
@@ -305,10 +295,6 @@ class UASparser:
 		return True
 
 	def updateData(self):
-		"""
-		Check whether data is out-of-date
-		"""
-
 		try:
 			cache_file = open(self.cache_file_name,'wb')
 			ini_file = self._fetchURL(self.ini_url)
@@ -322,9 +308,6 @@ class UASparser:
 		return True
 
 	def loadData(self):
-		"""
-		start to load cache data
-		"""
 		if self._checkCache():
 			self.data = pickle.load(open(self.cache_file_name,'rb'))
 		else:
