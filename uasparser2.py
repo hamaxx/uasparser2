@@ -39,6 +39,9 @@ class UASparser:
 	cache_dir = ''
 	data = None
 
+	mem_cache = OrderedDict()
+	mem_cache_size = 1000
+
 	empty_result = {
 		'typ':'unknown',
 		'ua_family':'unknown',
@@ -56,7 +59,7 @@ class UASparser:
 		'os_icon':'unknown.png',
 	}
 
-	def __init__(self, cache_dir=None):
+	def __init__(self, cache_dir=None, mem_cache_size=1000):
 		"""
 		Create an UASparser to parse useragent strings.
 		cache_dir should be appointed or set to the path of program by default
@@ -65,6 +68,8 @@ class UASparser:
 		if not os.access(self.cache_dir, os.W_OK):
 			raise UASException("Cache directory %s is not writable.")
 		self.cache_file_name = os.path.join( self.cache_dir, self.cache_file_name)
+
+		self.mem_cache_size = mem_cache_size
 
 		self.loadData()
 
@@ -99,22 +104,42 @@ class UASparser:
 					return True
 			return False
 
+		def add_to_cache(result_dict, matched):
+			if matched:
+				del self.mem_cache[useragent]
+
+			self.mem_cache[useragent] = result_dict
+
+			if len(self.mem_cache) > self.mem_cache_size:
+				self.mem_cache.popitem(last=False)
+
+		def get_from_cache():
+			if useragent in self.mem_cache:
+				return True, self.mem_cache[useragent]
+			else:
+				return False, None
+
 		if not useragent:
 			raise UASException("Excepted argument useragent is not given.")
 
-		data = self.data
-		result = self.empty_result.items()
+		matched_cache, result_dict = get_from_cache()
 
-		if match_robots(data, result):
-			return dict(result)
+		if not matched_cache:
+			data = self.data
+			result = self.empty_result.items()
 
-		match_os(data, result)
-		browser_match, browser_version = match_browser(data, result)
+			if match_robots(data, result):
+				result_dict = dict(result)
+			else:
+				match_os(data, result)
+				browser_match, browser_version = match_browser(data, result)
 
-		result_dict = dict(result)
+				result_dict = dict(result)
 
-		if browser_match:
-			result_dict['ua_name'] = '%s %s' % (result_dict['ua_family'], browser_version)
+				if browser_match:
+					result_dict['ua_name'] = '%s %s' % (result_dict['ua_family'], browser_version)
+
+		add_to_cache(result_dict, matched_cache)
 
 		return result_dict
 
