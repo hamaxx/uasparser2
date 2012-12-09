@@ -1,7 +1,7 @@
 uasparser2
 ==========
 
-Fast and reliable User Agent parser based on UASparser
+Fast and reliable User Agent parser
 ------------------------------------------------------
 By Jure Ham (jure.ham@zemanta.com)
 
