@@ -77,25 +77,25 @@ class UASparser:
 		"""
 
 		def match_robots(data, result):
-			for test in data['robots'].values():
+			for test in data['robots']:
 				if test['ua'] == useragent:
-					result += test['details'].items()
+					result += test['details']
 					return True
 			return False
 
 		def match_browser(data, result):
-			for test in data['browser']:
+			for test in data['browser']['reg']:
 				test_rg = test['re'].findall(useragent)
 				if test_rg:
-					test['details']['ua_name'] = '%s %s' % (test['details']['ua_family'], test_rg[0])
-					result += test['details'].items()
-					return True
-			return False
+					browser_version = test_rg[0]
+					result += data['browser']['details'][test['details_key']]
+					return True, browser_version
+			return False, None
 
 		def match_os(data, result):
-			for test in data['os']:
+			for test in data['os']['reg']:
 				if test['re'].findall(useragent):
-					result += test['details'].items()
+					result += data['os']['details'][test['details_key']]
 					return True
 			return False
 
@@ -105,19 +105,26 @@ class UASparser:
 		data = self.data
 		result = self.empty_result.items()
 
-		if not match_robots(data, result):
-			match_os(data, result)
-			match_browser(data, result)
+		if match_robots(data, result):
+			return dict(result)
 
-		return dict(result)
+		match_os(data, result)
+		browser_match, browser_version = match_browser(data, result)
 
-	def _parseIniFile(self, file):
+		result_dict = dict(result)
+
+		if browser_match:
+			result_dict['ua_name'] = '%s %s' % (result_dict['ua_family'], browser_version)
+
+		return result_dict
+
+	def _parseIniFile(self, file_content):
 		"""
 		Parse an ini file into a dictionary structure
 		"""
 
 		def toPythonReg(reg):
-			reg_l = reg[1:reg.rfind('/')] # modify the re into python format
+			reg_l = reg[1:reg.rfind('/')]
 			reg_r = reg[reg.rfind('/')+1:]
 			flag = 0
 			if 's' in reg_r: flag = flag | re.S
@@ -125,7 +132,32 @@ class UASparser:
 
 			return re.compile(reg_l,flag)
 
-		def get_matching_object(reg_list, details_list, details_template, browser_types=None, browser_os=None, os_dict=None):
+		def read_ini_file(file_content):
+			data = {}
+
+			current_section = ''
+			section_pat = re.compile(r'^\[(\S+)\]$')
+			option_pat = re.compile(r'^(\d+)\[\]\s=\s"(.*)"$')
+
+			for line in file_content.split("\n"):
+				option = option_pat.findall(line)
+				if option:
+					key = int(option[0][0])
+					val = option[0][1]
+
+					if data[current_section].has_key(key):
+						data[current_section][key].append(val)
+					else:
+						data[current_section][key] = [val,]
+				else:
+					section = section_pat.findall(line)
+					if section:
+						current_section = section[0]
+						data[current_section] = OrderedDict()
+
+			return data
+
+		def get_matching_object(reg_list, details, details_template, browser_types=None, browser_os=None, os=None):
 			m_data = []
 			m_details = {}
 
@@ -133,90 +165,72 @@ class UASparser:
 				reg = toPythonReg(r_obj[0])
 				m_id = int(r_obj[1])
 
-				obj = {'re': reg, 'details': {}}
+				obj = {'re': reg, 'details_key': m_id}
+				m_data.append(obj)
 
-				if browser_os and os_dict and m_id in browser_os:
+			for m_id, details in details.iteritems():
+				obj = []
+
+				# OS details from browser
+				if browser_os and os and m_id in browser_os:
 					key = int(browser_os[m_id][0])
-					if key in os_dict:
-						obj['details'] = dict(os_dict[key]['details'])
+					if key in os['details']:
+						obj.extend(os['details'][key])
 
-				for i, det in enumerate(details_list[m_id]):
-					if details_template[i][0] == 'ua_info_url':
+				for i, det in enumerate(details):
+					if details_template[i] == 'ua_info_url':
 						det = self.info_url + det
 
-					if browser_types and details_template[i][0] == 'typ':
+					if browser_types and details_template[i] == 'typ':
 						det = browser_types[int(det)][0]
 
-					obj['details'][details_template[i][0]] = det
+					obj.append((details_template[i], det))
 
-				m_data.append(obj)
 				m_details[m_id] = obj
 
-			return m_data, m_details
+			return {
+					'reg': m_data,
+					'details': m_details,
+				}
 
-		def get_robots_object(robots_list, os_list, browser_template, os_template):
-			r_data = OrderedDict()
-			for r_id, robot in robots_list.iteritems():
+		def get_robots_object(robots, os_details, browser_template, os_template):
+			r_data = []
+			for r_id, robot in robots.iteritems():
 				obj = {}
 
 				re = robot[0]
 				details_browser = robot[1:7] + robot[8:]
-				details_os = os_list[robot[7]] if robot[7] else []
+				details_os = os_details[robot[7]] if robot[7] else []
 
 				obj['ua'] = re
-				obj['details'] = {'typ': 'Robot'}
+				obj['details'] = [('typ', 'Robot'),]
 
-				for i, tem in enumerate(browser_template):
-					det = details_browser[i] if len(details_browser) > i else tem[1]
-					if tem[0] == 'ua_info_url':
+				for i, name in enumerate(browser_template):
+					det = details_browser[i] if len(details_browser) > i else self.empty_result[name]
+
+					if name == 'ua_info_url':
 						det = self.info_url + det
-					obj['details'][tem[0]] = det
 
-				for i, tem in enumerate(os_template):
-					det = details_os[i] if len(details_os) > i else tem[1]
-					obj['details'][os_template[i][0]] = det
+					obj['details'].append((name, det))
 
-				r_data[r_id] = obj
+				for i, name in enumerate(os_template):
+					det = details_os[i] if len(details_os) > i else self.empty_result[name]
+					obj['details'].append((name, det))
+
+				r_data.append(obj)
 
 			return r_data
 
-		data = {}
-		current_section = ''
-		section_pat = re.compile(r'^\[(\S+)\]$')
-		option_pat = re.compile(r'^(\d+)\[\]\s=\s"(.*)"$')
 
-		ret_os = (('os_family','unknown'), ('os_name','unknown'), ('os_url','unknown'), ('os_company','unknown'),
-				('os_company_url','unknown'), ('os_icon','unknown.png'))
+		os_template = ['os_family', 'os_name', 'os_url', 'os_company', 'os_company_url', 'os_icon']
+		browser_template = ['typ', 'ua_family', 'ua_url', 'ua_company', 'ua_company_url', 'ua_icon', 'ua_info_url']
+		robot_template = ['ua_family', 'ua_name', 'ua_url', 'ua_company', 'ua_company_url', 'ua_icon', 'ua_info_url']
 
-		ret_browser = (('typ', 'unknown'), ('ua_family','unknown'), ('ua_url','unknown'),
-				('ua_company','unknown'), ('ua_company_url','unknown'), ('ua_icon','unknown.png'), ('ua_info_url', 'unknown'))
+		data = read_ini_file(file_content)
 
-		ret_robot = (('ua_family','unknown'), ('ua_name', 'unknown'), ('ua_url','unknown'),
-				('ua_company','unknown'), ('ua_company_url','unknown'), ('ua_icon','unknown.png'), ('ua_info_url', 'unknown'))
-
-		#step by line
-		order = []
-		for line in file.split("\n"):
-			option = option_pat.findall(line)
-			if option:
-				key = int(option[0][0])
-				val = option[0][1]
-
-				if data[current_section].has_key(key):
-					data[current_section][key].append(val)
-				else:
-					data[current_section][key] = [val,]
-					order.append(key)
-			else:
-				section = section_pat.findall(line)
-				if section:
-					current_section = section[0]
-					data[current_section] = OrderedDict()
-					order = []
-
-		robots = get_robots_object(data['robots'], data['os'], ret_robot, ret_os)
-		os, os_dict = get_matching_object(data['os_reg'], data['os'], ret_os)
-		browser, browser_dict = get_matching_object(data['browser_reg'], data['browser'], ret_browser, data['browser_type'], data['browser_os'], os_dict)
+		robots = get_robots_object(data['robots'], data['os'], robot_template, os_template)
+		os = get_matching_object(data['os_reg'], data['os'], os_template)
+		browser = get_matching_object(data['browser_reg'], data['browser'], browser_template, data['browser_type'], data['browser_os'], os)
 
 		return {
 			'robots': robots,
@@ -252,7 +266,6 @@ class UASparser:
 			ini_file = self._fetchURL(self.ini_url)
 			ini_data = self._parseIniFile(ini_file)
 		except:
-			raise
 			raise UASException("Failed to download cache data")
 
 		self.data = ini_data
