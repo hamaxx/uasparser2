@@ -30,21 +30,55 @@ except:
 class UASException(Exception):
 	pass
 
+class UASCache(object):
+
+	cache = None
+	cache_size = 0
+
+	stats_hit = 0
+	stats_miss = 0
+
+	def __init__(self, cache_size):
+		if cache_size <= 0: return
+
+		self.cache = OrderedDict()
+		self.cache_size = cache_size
+
+	def insert(self, key, val):
+		if self.cache_size <= 0: return
+
+		try:
+			del self.cache[key]
+
+			self.stats_hit += 1
+		except KeyError:
+			if len(self.cache) > self.cache_size:
+				self.cache.popitem(last=False)
+
+			self.stats_miss += 1
+
+		self.cache[key] = val
+
+	def get(self, key):
+		if self.cache_size <= 0: return
+
+		try:
+			return self.cache[key]
+		except KeyError:
+			return None
+
+
 class UASparser:
 
 	ini_url  = 'http://user-agent-string.info/rpc/get_data.php?key=free&format=ini'
 	info_url = 'http://user-agent-string.info'
 
-	cache_file_name = 'uasparser2_cache'
+	cache_file_name = 'uasparser2_cache.pickle'
 	cache_dir = ''
+
 	data = None
 
-	mem_cache = OrderedDict()
-	mem_cache_size = 1000
-
-	# for testing only
-	cache_hit = 0
-	cache_all = 0
+	mem_cache = None
 
 	empty_result = {
 		'typ':'unknown',
@@ -73,7 +107,7 @@ class UASparser:
 			raise UASException("Cache directory %s is not writable.")
 		self.cache_file_name = os.path.join( self.cache_dir, self.cache_file_name)
 
-		self.mem_cache_size = mem_cache_size
+		self.mem_cache = UASCache(mem_cache_size)
 
 		self.loadData()
 
@@ -108,29 +142,12 @@ class UASparser:
 					return True
 			return False
 
-		def add_to_cache(result_dict, matched):
-			if matched:
-				self.cache_hit += 1
-				del self.mem_cache[useragent]
-			self.cache_all += 1
-
-			self.mem_cache[useragent] = result_dict
-
-			if len(self.mem_cache) > self.mem_cache_size:
-				self.mem_cache.popitem(last=False)
-
-		def get_from_cache():
-			if useragent in self.mem_cache:
-				return True, self.mem_cache[useragent]
-			else:
-				return False, None
-
 		if not useragent:
 			raise UASException("Excepted argument useragent is not given.")
 
-		matched_cache, result_dict = get_from_cache()
+		result_dict = self.mem_cache.get(useragent)
 
-		if not matched_cache:
+		if not result_dict:
 			data = self.data
 			result = self.empty_result.items()
 
@@ -145,7 +162,7 @@ class UASparser:
 				if browser_match:
 					result_dict['ua_name'] = '%s %s' % (result_dict['ua_family'], browser_version)
 
-		add_to_cache(result_dict, matched_cache)
+		self.mem_cache.insert(useragent, result_dict)
 
 		return result_dict
 

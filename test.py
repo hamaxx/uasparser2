@@ -16,10 +16,12 @@ for uas, obj in test_uas:
 		assert new_obj == obj
 	except:
 		print
-		for k, v in obj.iteritems(): print k, '\t', v, '\t', new_obj[k]
 		raise
+		try:
+			for k, v in obj.iteritems(): print k, '\t', v, '\t', new_obj[k]
+		except: pass
 
 print
 print 'parse:', time.time() - t0
 
-print 'cahce', up.cache_hit, up.cache_all
+print 'cahce', up.mem_cache.stats_hit, up.mem_cache.stats_miss
