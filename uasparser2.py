@@ -143,7 +143,7 @@ class UASparser:
 				option = option_pat.findall(line)
 				if option:
 					key = int(option[0][0])
-					val = option[0][1]
+					val = option[0][1].decode('utf-8')
 
 					if data[current_section].has_key(key):
 						data[current_section][key].append(val)
