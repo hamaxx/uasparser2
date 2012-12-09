@@ -15,17 +15,15 @@ Usage:
 
 	uas_parser = UASparser('/path/to/your/cache/folder')
 
-	result = uas_parser.parse('YOUR_USERAGENT_STRING',entire_url='ua_icon,os_icon') #only 'ua_icon' or 'os_icon' or both are allowed in entire_url
+	result = uas_parser.parse('YOUR_USERAGENT_STRING')
 """
 
 from collections import OrderedDict
+import cPickle as pickle
 import urllib2
 import os
 import re
-try:
-	import cPickle as pickle
-except:
-	import pickle
+
 
 class UASException(Exception):
 	pass
@@ -67,8 +65,7 @@ class UASCache(object):
 		except KeyError:
 			return None
 
-
-class UASparser:
+class UASparser(object):
 
 	ini_url  = 'http://user-agent-string.info/rpc/get_data.php?key=free&format=ini'
 	info_url = 'http://user-agent-string.info'
@@ -97,7 +94,7 @@ class UASparser:
 		'os_icon':'unknown.png',
 	}
 
-	def __init__(self, cache_dir=None, mem_cache_size=1000):
+	def __init__(self, cache_dir=None, mem_cache_size=0):
 		"""
 		Create an UASparser to parse useragent strings.
 		cache_dir should be appointed or set to the path of program by default
@@ -122,7 +119,8 @@ class UASparser:
 		def match_robots(data, result):
 			for test in data['robots']:
 				if test['ua'] == useragent:
-					result += test['details']
+					result.update(test['details'])
+
 					return True
 			return False
 
@@ -131,40 +129,37 @@ class UASparser:
 				test_rg = test['re'].findall(useragent)
 				if test_rg:
 					browser_version = test_rg[0]
-					result += data['browser']['details'][test['details_key']]
-					return True, browser_version
-			return False, None
+
+					result.update(data['browser']['details'][test['details_key']])
+					result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
+
+					return True
+			return False
 
 		def match_os(data, result):
 			for test in data['os']['reg']:
 				if test['re'].findall(useragent):
-					result += data['os']['details'][test['details_key']]
+					result.update(data['os']['details'][test['details_key']])
+
 					return True
 			return False
 
 		if not useragent:
 			raise UASException("Excepted argument useragent is not given.")
 
-		result_dict = self.mem_cache.get(useragent)
+		result = self.mem_cache.get(useragent)
 
-		if not result_dict:
+		if not result:
 			data = self.data
-			result = self.empty_result.items()
+			result = dict(self.empty_result)
 
-			if match_robots(data, result):
-				result_dict = dict(result)
-			else:
+			if not match_robots(data, result):
 				match_os(data, result)
-				browser_match, browser_version = match_browser(data, result)
+				match_browser(data, result)
 
-				result_dict = dict(result)
+		self.mem_cache.insert(useragent, result)
 
-				if browser_match:
-					result_dict['ua_name'] = '%s %s' % (result_dict['ua_family'], browser_version)
-
-		self.mem_cache.insert(useragent, result_dict)
-
-		return result_dict
+		return result
 
 	def _parseIniFile(self, file_content):
 		def toPythonReg(reg):
@@ -213,13 +208,13 @@ class UASparser:
 				m_data.append(obj)
 
 			for m_id, details in details.iteritems():
-				obj = []
+				obj = {}
 
 				# OS details from browser
 				if browser_os and os and m_id in browser_os:
 					key = int(browser_os[m_id][0])
 					if key in os['details']:
-						obj.extend(os['details'][key])
+						obj.update(os['details'][key])
 
 				for i, det in enumerate(details):
 					if details_template[i] == 'ua_info_url':
@@ -228,7 +223,7 @@ class UASparser:
 					if browser_types and details_template[i] == 'typ':
 						det = browser_types[int(det)][0]
 
-					obj.append((details_template[i], det))
+					obj[details_template[i]] = det
 
 				m_details[m_id] = obj
 
@@ -247,7 +242,7 @@ class UASparser:
 				details_os = os_details[robot[7]] if robot[7] else []
 
 				obj['ua'] = re
-				obj['details'] = [('typ', 'Robot'),]
+				obj['details'] = {'typ': 'Robot'}
 
 				for i, name in enumerate(browser_template):
 					det = details_browser[i] if len(details_browser) > i else self.empty_result[name]
@@ -255,11 +250,11 @@ class UASparser:
 					if name == 'ua_info_url':
 						det = self.info_url + det
 
-					obj['details'].append((name, det))
+					obj['details'][name] = det
 
 				for i, name in enumerate(os_template):
 					det = details_os[i] if len(details_os) > i else self.empty_result[name]
-					obj['details'].append((name, det))
+					obj['details'][name] = det
 
 				r_data.append(obj)
 
@@ -312,3 +307,4 @@ class UASparser:
 			self.data = pickle.load(open(self.cache_file_name,'rb'))
 		else:
 			self.updateData()
+
