@@ -128,7 +128,7 @@ class UASparser(object):
 			for test in data['browser']['reg']:
 				test_rg = test['re'].findall(useragent)
 				if test_rg:
-					browser_version = test_rg[0]
+					browser_version = test_rg[0].decode('utf-8')
 
 					result.update(data['browser']['details'][test['details_key']])
 					result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
