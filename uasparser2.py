@@ -128,7 +128,7 @@ class UASparser(object):
 			for test in data['browser']['reg']:
 				test_rg = test['re'].findall(useragent)
 				if test_rg:
-					browser_version = test_rg[0].decode('utf-8')
+					browser_version = test_rg[0].decode('utf-8', 'ignore')
 
 					result.update(data['browser']['details'][test['details_key']])
 					result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
@@ -182,7 +182,7 @@ class UASparser(object):
 				option = option_pat.findall(line)
 				if option:
 					key = int(option[0][0])
-					val = option[0][1].decode('utf-8')
+					val = option[0][1].decode('utf-8', 'ignore')
 
 					if data[current_section].has_key(key):
 						data[current_section][key].append(val)
