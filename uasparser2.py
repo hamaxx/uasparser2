@@ -117,12 +117,12 @@ class UASparser(object):
 		"""
 
 		def match_robots(data, result):
-			for test in data['robots']:
-				if test['ua'] == useragent:
-					result.update(test['details'])
-
-					return True
-			return False
+			try:
+				res = data['robots'][useragent]
+				result.update(res['details'])
+				return True
+			except KeyError:
+				return False
 
 		def match_browser(data, result):
 			for test in data['browser']['reg']:
@@ -233,7 +233,7 @@ class UASparser(object):
 				}
 
 		def get_robots_object(robots, os_details, browser_template, os_template):
-			r_data = []
+			r_data = {}
 			for r_id, robot in robots.iteritems():
 				obj = {}
 
@@ -256,7 +256,7 @@ class UASparser(object):
 					det = details_os[i] if len(details_os) > i else self.empty_result[name]
 					obj['details'][name] = det
 
-				r_data.append(obj)
+				r_data[re] = obj
 
 			return r_data
 

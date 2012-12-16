@@ -32,10 +32,10 @@ Usage:
 
 Speed comparison:
 -----------------
-Parsing 100,000 user agents (10,000 uniqe) from our server logs:
+Parsing 100,000 user agents (10,000 unique) from our server logs:
 
 original uasparser: 7264.2 sec
 
-uasparser2 without cache: 184.5 sec
+uasparser2 without cache: 171.7 sec
 
-uasparser2 with cache(size 1000): 35.9 sec
+uasparser2 with cache(size 1000): 34.6 sec
