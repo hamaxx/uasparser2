@@ -70,7 +70,7 @@ class UASparser(object):
 	ini_url  = 'http://user-agent-string.info/rpc/get_data.php?key=free&format=ini'
 	info_url = 'http://user-agent-string.info'
 
-	cache_file_name = 'uasparser2_cache.pickle'
+	cache_file_name = 'uasparser21_cache.pickle'
 	cache_dir = ''
 
 	data = None
@@ -133,7 +133,13 @@ class UASparser(object):
 					result.update(data['browser']['details'][test['details_key']])
 					result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
 
-					return True
+					os_key = test['os_details_key']
+					if os_key:
+						result.update(data['os']['details'][os_key])
+
+						return True
+					return False
+
 			return False
 
 		def match_os(data, result):
@@ -154,8 +160,8 @@ class UASparser(object):
 			result = dict(self.empty_result)
 
 			if not match_robots(data, result):
-				match_os(data, result)
-				match_browser(data, result)
+				if not match_browser(data, result):
+					match_os(data, result)
 
 		self.mem_cache.insert(useragent, result)
 
@@ -196,7 +202,7 @@ class UASparser(object):
 
 			return data
 
-		def get_matching_object(reg_list, details, details_template, browser_types=None, browser_os=None, os=None):
+		def get_matching_object(reg_list, details, details_template, browser_types=None, browser_os=None):
 			m_data = []
 			m_details = {}
 
@@ -204,17 +210,18 @@ class UASparser(object):
 				reg = toPythonReg(r_obj[0])
 				m_id = int(r_obj[1])
 
-				obj = {'re': reg, 'details_key': m_id}
+				obj = {'re': reg, 'details_key': m_id, 'os_details_key': None}
+
+				# OS details from browser
+				if browser_os and m_id in browser_os:
+					key = int(browser_os[m_id][0])
+					obj['os_details_key'] = key
+
 				m_data.append(obj)
+
 
 			for m_id, details in details.iteritems():
 				obj = {}
-
-				# OS details from browser
-				if browser_os and os and m_id in browser_os:
-					key = int(browser_os[m_id][0])
-					if key in os['details']:
-						obj.update(os['details'][key])
 
 				for i, det in enumerate(details):
 					if details_template[i] == 'ua_info_url':
@@ -269,7 +276,7 @@ class UASparser(object):
 
 		robots = get_robots_object(data['robots'], data['os'], robot_template, os_template)
 		os = get_matching_object(data['os_reg'], data['os'], os_template)
-		browser = get_matching_object(data['browser_reg'], data['browser'], browser_template, data['browser_type'], data['browser_os'], os)
+		browser = get_matching_object(data['browser_reg'], data['browser'], browser_template, data['browser_type'], data['browser_os'])
 
 		return {
 			'robots': robots,
