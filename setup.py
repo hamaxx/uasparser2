@@ -1,8 +1,8 @@
-from setuptools import find_packages, setup
+from setuptools import setup
 
 setup(name='uasparser2',
       version='0.1',
       description="Fast and reliable User-Agent parser for Python.",
       url='https://github.com/mailgun/uasparser2',
-      packages=find_packages(),
+      packages=['uasparser2',],
       zip_safe=True)
