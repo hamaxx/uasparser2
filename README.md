@@ -15,6 +15,9 @@ By Hicro Kee (http://hicrokee.com) email: hicrokee AT gmail DOT com
 
 Modified by Michal Molhanec http://molhanec.net
 
+Install:
+-------
+	pip install uasparser2
 
 Usage:
 ------
