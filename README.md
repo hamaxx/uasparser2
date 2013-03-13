@@ -42,3 +42,7 @@ original uasparser: 7264.2 sec
 uasparser2 without cache: 171.7 sec
 
 uasparser2 with cache(size 1000): 34.6 sec
+
+
+[![Bitdeli Badge](https://d2weczhvl823v0.cloudfront.net/hamaxx/uasparser2/trend.png)](https://bitdeli.com/free "Bitdeli Badge")
+
