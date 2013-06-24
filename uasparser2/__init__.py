@@ -102,7 +102,7 @@ class UASparser(object):
 
 		self.cache_dir = cache_dir or os.path.abspath( os.path.dirname(__file__) )
 		if not os.access(self.cache_dir, os.W_OK):
-			raise UASException("Cache directory %s is not writable.")
+			raise UASException("Cache directory %s is not writable." % self.cache_dir)
 		self.cache_file_name = os.path.join( self.cache_dir, self.cache_file_name)
 
 		self.mem_cache = UASCache(mem_cache_size)
