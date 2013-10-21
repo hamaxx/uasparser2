@@ -132,7 +132,7 @@ class UASparser(object):
 
 					result.update(data['browser']['details'][test['details_key']])
 
-					if test_rg.groups():
+					if test_rg.groups() and test_rg.group(1):
 						browser_version = test_rg.group(1).decode('utf-8', 'ignore')
 						result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
 					else:
