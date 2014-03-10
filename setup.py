@@ -44,7 +44,7 @@ Links
 from setuptools import setup
 
 setup(name='uasparser2',
-      version='0.1',
+      version='0.1.1',
       author='Jure Ham',
       license='BSD',
       author_email='jure.ham@zemanta.com',
