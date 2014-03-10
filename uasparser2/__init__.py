@@ -102,7 +102,7 @@ class UASparser(object):
 
 		self.cache_dir = cache_dir or os.path.abspath( os.path.dirname(__file__) )
 		if not os.access(self.cache_dir, os.W_OK):
-			raise UASException("Cache directory %s is not writable.")
+			raise UASException("Cache directory %s is not writable." % self.cache_dir)
 		self.cache_file_name = os.path.join( self.cache_dir, self.cache_file_name)
 
 		self.mem_cache = UASCache(mem_cache_size)
@@ -126,12 +126,17 @@ class UASparser(object):
 
 		def match_browser(data, result):
 			for test in data['browser']['reg']:
-				test_rg = test['re'].findall(useragent)
+				test_rg = list(test['re'].finditer(useragent))
 				if test_rg:
-					browser_version = test_rg[0].decode('utf-8', 'ignore')
+					test_rg = test_rg[0]
 
 					result.update(data['browser']['details'][test['details_key']])
-					result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
+
+					if test_rg.groups() and test_rg.group(1):
+						browser_version = test_rg.group(1).decode('utf-8', 'ignore')
+						result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
+					else:
+						result['ua_name'] = result['ua_family']
 
 					os_key = test['os_details_key']
 					if os_key:
