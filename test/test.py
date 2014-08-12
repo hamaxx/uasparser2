@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 import json
 import time
 
@@ -14,14 +15,16 @@ print 'load:', time.time() - t0
 
 t0 = time.time()
 for uas, obj in test_uas:
-	try:
-		new_obj = up.parse(uas)
+    try:
+        new_obj = up.parse(uas)
 
-		assert new_obj == obj
-	except:
-		print
-		for k, v in obj.iteritems(): print k, '\t', v, '\t', new_obj[k]
-		raise
+        assert new_obj == obj
+    except Exception:
+        print
+        print uas
+        for k in set(new_obj.keys()) | set(obj.keys()):
+            if obj.get(k) != new_obj.get(k):
+                print k, '\t', obj.get(k, '').encode('utf-8'), '\t', new_obj.get(k, '').encode('utf-8')
 
 print
 print 'parse:', time.time() - t0
