@@ -28,6 +28,7 @@ import re
 class UASException(Exception):
     pass
 
+
 class UASCache(object):
 
     cache = None
@@ -37,13 +38,15 @@ class UASCache(object):
     stats_miss = 0
 
     def __init__(self, cache_size):
-        if cache_size <= 0: return
+        if cache_size <= 0:
+            return
 
         self.cache = OrderedDict()
         self.cache_size = cache_size
 
     def insert(self, key, val):
-        if self.cache_size <= 0: return
+        if self.cache_size <= 0:
+            return
 
         try:
             del self.cache[key]
@@ -58,16 +61,18 @@ class UASCache(object):
         self.cache[key] = val
 
     def get(self, key):
-        if self.cache_size <= 0: return
+        if self.cache_size <= 0:
+            return
 
         try:
             return self.cache[key]
         except KeyError:
             return None
 
+
 class UASparser(object):
 
-    ini_url  = 'http://user-agent-string.info/rpc/get_data.php?key=free&format=ini'
+    ini_url = 'http://user-agent-string.info/rpc/get_data.php?key=free&format=ini'
     info_url = 'http://user-agent-string.info'
 
     cache_file_name = 'uasparser21_cache.pickle'
@@ -78,23 +83,23 @@ class UASparser(object):
     mem_cache = None
 
     empty_result = {
-        'typ':'unknown',
-        'ua_family':'unknown',
-        'ua_name':'unknown',
-        'ua_url':'unknown',
-        'ua_company':'unknown',
-        'ua_company_url':'unknown',
-        'ua_icon':'unknown.png',
-        'ua_info_url':'unknown',
-        'device_type':'unknown',
-        'device_icon':'unknown.png',
-        'device_info_url':'unknown',
-        'os_family':'unknown',
-        'os_name':'unknown',
-        'os_url':'unknown',
-        'os_company':'unknown',
-        'os_company_url':'unknown',
-        'os_icon':'unknown.png',
+        'typ': 'unknown',
+        'ua_family': 'unknown',
+        'ua_name': 'unknown',
+        'ua_url': 'unknown',
+        'ua_company': 'unknown',
+        'ua_company_url': 'unknown',
+        'ua_icon': 'unknown.png',
+        'ua_info_url': 'unknown',
+        'device_type': 'unknown',
+        'device_icon': 'unknown.png',
+        'device_info_url': 'unknown',
+        'os_family': 'unknown',
+        'os_name': 'unknown',
+        'os_url': 'unknown',
+        'os_company': 'unknown',
+        'os_company_url': 'unknown',
+        'os_icon': 'unknown.png',
     }
 
     def __init__(self, cache_dir=None, mem_cache_size=0):
@@ -103,10 +108,10 @@ class UASparser(object):
         cache_dir should be appointed or set to the path of program by default
         """
 
-        self.cache_dir = cache_dir or os.path.abspath( os.path.dirname(__file__) )
+        self.cache_dir = cache_dir or os.path.abspath(os.path.dirname(__file__))
         if not os.access(self.cache_dir, os.W_OK):
             raise UASException("Cache directory %s is not writable." % self.cache_dir)
-        self.cache_file_name = os.path.join( self.cache_dir, self.cache_file_name)
+        self.cache_file_name = os.path.join(self.cache_dir, self.cache_file_name)
 
         self.mem_cache = UASCache(mem_cache_size)
 
@@ -187,12 +192,14 @@ class UASparser(object):
     def _parseIniFile(self, file_content):
         def toPythonReg(reg):
             reg_l = reg[1:reg.rfind('/')]
-            reg_r = reg[reg.rfind('/')+1:]
+            reg_r = reg[reg.rfind('/') + 1:]
             flag = 0
-            if 's' in reg_r: flag = flag | re.S
-            if 'i' in reg_r: flag = flag | re.I
+            if 's' in reg_r:
+                flag = flag | re.S
+            if 'i' in reg_r:
+                flag = flag | re.I
 
-            return re.compile(reg_l,flag)
+            return re.compile(reg_l, flag)
 
         def read_ini_file(file_content):
             data = {}
@@ -207,10 +214,10 @@ class UASparser(object):
                     key = int(option[0][0])
                     val = option[0][1].decode('utf-8', 'ignore')
 
-                    if data[current_section].has_key(key):
+                    if key in data[current_section]:
                         data[current_section][key].append(val)
                     else:
-                        data[current_section][key] = [val,]
+                        data[current_section][key] = [val]
                 else:
                     section = section_pat.findall(line)
                     if section:
@@ -236,7 +243,6 @@ class UASparser(object):
 
                 m_data.append(obj)
 
-
             for m_id, details in details.iteritems():
                 obj = {}
 
@@ -252,9 +258,9 @@ class UASparser(object):
                 m_details[m_id] = obj
 
             return {
-                    'reg': m_data,
-                    'details': m_details,
-                }
+                'reg': m_data,
+                'details': m_details,
+            }
 
         def get_robots_object(robots, os_details, browser_template, os_template):
             r_data = {}
@@ -284,17 +290,18 @@ class UASparser(object):
 
             return r_data
 
-
         os_template = ['os_family', 'os_name', 'os_url', 'os_company', 'os_company_url', 'os_icon']
         browser_template = ['typ', 'ua_family', 'ua_url', 'ua_company', 'ua_company_url', 'ua_icon', 'ua_info_url']
         robot_template = ['ua_family', 'ua_name', 'ua_url', 'ua_company', 'ua_company_url', 'ua_icon', 'ua_info_url']
-        device_template =  ['device_type', 'device_icon', 'device_info_url']
+        device_template = ['device_type', 'device_icon', 'device_info_url']
 
         data = read_ini_file(file_content)
 
         robots = get_robots_object(data['robots'], data['os'], robot_template, os_template)
         os = get_matching_object(data['os_reg'], data['os'], os_template)
-        browser = get_matching_object(data['browser_reg'], data['browser'], browser_template, data['browser_type'], data['browser_os'])
+        browser = get_matching_object(
+            data['browser_reg'], data['browser'], browser_template, data['browser_type'], data['browser_os']
+        )
         device = get_matching_object(data['device_reg'], data['device'], device_template)
 
         return {
@@ -318,7 +325,7 @@ class UASparser(object):
 
     def updateData(self):
         try:
-            cache_file = open(self.cache_file_name,'wb')
+            cache_file = open(self.cache_file_name, 'wb')
             ini_file = self._fetchURL(self.ini_url)
             ini_data = self._parseIniFile(ini_file)
         except:
@@ -331,6 +338,6 @@ class UASparser(object):
 
     def loadData(self):
         if self._checkCache():
-            self.data = pickle.load(open(self.cache_file_name,'rb'))
+            self.data = pickle.load(open(self.cache_file_name, 'rb'))
         else:
             self.updateData()
