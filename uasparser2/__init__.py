@@ -18,11 +18,22 @@ Usage:
     result = uas_parser.parse('YOUR_USERAGENT_STRING')
 """
 
-from collections import OrderedDict
-import cPickle as pickle
 import urllib2
 import os
 import re
+
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
+
+
+DEFAULT_TMP_DIR = '/tmp'
 
 
 class UASException(Exception):
@@ -108,7 +119,7 @@ class UASparser(object):
         cache_dir should be appointed or set to the path of program by default
         """
 
-        self.cache_dir = cache_dir or os.path.abspath(os.path.dirname(__file__))
+        self.cache_dir = cache_dir or DEFAULT_TMP_DIR
         if not os.access(self.cache_dir, os.W_OK):
             raise UASException("Cache directory %s is not writable." % self.cache_dir)
         self.cache_file_name = os.path.join(self.cache_dir, self.cache_file_name)
@@ -338,6 +349,9 @@ class UASparser(object):
 
     def loadData(self):
         if self._checkCache():
-            self.data = pickle.load(open(self.cache_file_name, 'rb'))
+            try:
+                self.data = pickle.load(open(self.cache_file_name, 'rb'))
+            except Exception:
+                self.updateData()
         else:
             self.updateData()

@@ -41,16 +41,24 @@ Links
 
 """
 
+import sys
 from setuptools import setup
 
-setup(name='uasparser2',
-      version='0.1.1',
-      author='Jure Ham',
-      license='BSD',
-      author_email='jure.ham@zemanta.com',
-      description="Fast and reliable User Agent parser for Python.",
-      long_description=__doc__,
-      url='https://github.com/hamaxx/uasparser2',
-      packages=['uasparser2',],
-      platforms='any',
-      zip_safe=True)
+extra = {}
+if sys.version_info < (2, 7):
+    extra['install_requires'] = ['ordereddict']
+
+setup(
+    name='uasparser2',
+    version='0.2',
+    author='Jure Ham',
+    license='BSD',
+    author_email='jure.ham@zemanta.com',
+    description="Fast and reliable User Agent parser for Python.",
+    long_description=__doc__,
+    url='https://github.com/hamaxx/uasparser2',
+    packages=['uasparser2'],
+    platforms='any',
+    zip_safe=True,
+    **extra
+)
