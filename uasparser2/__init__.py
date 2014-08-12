@@ -86,9 +86,9 @@ class UASparser(object):
                 'ua_company_url':'unknown',
                 'ua_icon':'unknown.png',
                 'ua_info_url':'unknown',
-                'ua_device_type':'unknown',
-                'ua_device_icon':'unknown.png',
-                'ua_device_info_url':'unknown',
+                'device_type':'unknown',
+                'device_icon':'unknown.png',
+                'device_info_url':'unknown',
                 'os_family':'unknown',
                 'os_name':'unknown',
                 'os_url':'unknown',
@@ -171,7 +171,14 @@ class UASparser(object):
 
                         match_robots(data, result) or match_browser(data, result) or match_os(data, result)
                         # Finally try to match the device type.
-                        match_device(data, result)
+                        if not match_device(data, result):
+                                # Try to match using the type
+                                if result['typ'] in ("Other", "Library", "Validator", "Useragent Anonymizer"):
+                                        result.update(data['device']['details'][1])
+                                elif result['typ'] in ("Mobile Browser", "Wap Browser"):
+                                        result.update(data['device']['details'][3])
+                                else:
+                                        result.update(data['device']['details'][2])
 
                 self.mem_cache.insert(useragent, result)
 
@@ -281,7 +288,7 @@ class UASparser(object):
                 os_template = ['os_family', 'os_name', 'os_url', 'os_company', 'os_company_url', 'os_icon']
                 browser_template = ['typ', 'ua_family', 'ua_url', 'ua_company', 'ua_company_url', 'ua_icon', 'ua_info_url']
                 robot_template = ['ua_family', 'ua_name', 'ua_url', 'ua_company', 'ua_company_url', 'ua_icon', 'ua_info_url']
-                device_template =  ['ua_device_type', 'ua_device_icon', 'ua_device_info_url']
+                device_template =  ['device_type', 'device_icon', 'device_info_url']
 
                 data = read_ini_file(file_content)
 
