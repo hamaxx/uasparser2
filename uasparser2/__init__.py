@@ -18,8 +18,8 @@ Usage:
     result = uas_parser.parse('YOUR_USERAGENT_STRING')
 """
 
-import urllib2
 import os
+import platform
 import re
 import time
 
@@ -33,11 +33,17 @@ try:
 except ImportError:
     from ordereddict import OrderedDict
 
+try:
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
+
 from .imcache import SimpleCache
 from .decorators import deprecated
 
 
-CACHE_FILE_NAME = 'uasparser22_cache.pickle'
+VERSION = '0.3'
+CACHE_FILE_NAME = 'uasparser2_{lib_version}_{python_version}_cache.pickle'
 
 DEFAULT_TMP_DIR = '/tmp'
 
@@ -82,10 +88,7 @@ class UASParser(object):
             mem_cache_size: Int, number of parsed useragents to cache, default is 1000.
         """
 
-        self._cache_dir = cache_dir or DEFAULT_TMP_DIR
-        if not os.access(self._cache_dir, os.W_OK):
-            raise UASException("Cache directory %s is not writable." % self._cache_dir)
-        self._cache_file_name = os.path.join(self._cache_dir, CACHE_FILE_NAME)
+        self._cache_file_name = self._get_cache_file_name(cache_dir)
         self._cache_ttl = cache_ttl
 
         self._mem_cache_size = mem_cache_size
@@ -95,6 +98,20 @@ class UASParser(object):
         self._uas_matcher = None
 
         self.load_data()
+
+    def _get_cache_file_name(self, cache_dir):
+        cache_dir = cache_dir or DEFAULT_TMP_DIR
+
+        if not os.access(cache_dir, os.W_OK):
+            raise UASException("Cache directory %s is not writable." % cache_dir)
+
+        return os.path.join(
+            cache_dir,
+            CACHE_FILE_NAME.format(
+                lib_version=VERSION,
+                python_version=platform.python_version(),
+            )
+        )
 
     def parse(self, useragent):
         """
@@ -119,9 +136,8 @@ class UASParser(object):
         return result
 
     def _fetch_url(self, url):
-        resq = urllib2.Request(url)
-        context = urllib2.urlopen(resq)
-        return context.read()
+        context = urlopen(url)
+        return context
 
     def _check_cache(self):
         cache_file = self._cache_file_name
@@ -202,8 +218,8 @@ class _UASMatcher(object):
     def _match_browser(self, useragent, result):
         for test in self._data['browser']['reg']:
             test_rg = test['re'].search(useragent)
-            if test_rg and test_rg.lastindex > 0:
-                browser_version = test_rg.group(1).decode('utf-8', 'ignore')
+            if test_rg and test_rg.lastindex and test_rg.lastindex > 0:
+                browser_version = test_rg.group(1)
 
                 result.update(self._data['browser']['details'][test['details_key']])
                 result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
@@ -266,18 +282,19 @@ class _IniDataLoader(object):
 
         return re.compile(reg_l, flag)
 
-    def _read_ini_file(self, file_content):
+    def _read_ini_file(self, file_buffer):
         data = {}
 
         current_section = ''
         section_pat = re.compile(r'^\[(\S+)\]$')
         option_pat = re.compile(r'^(\d+)\[\]\s=\s"(.*)"$')
 
-        for line in file_content.split("\n"):
+        for line in file_buffer:
+            line = line.decode('utf-8', 'ignore')
             option = option_pat.findall(line)
             if option:
                 key = int(option[0][0])
-                val = option[0][1].decode('utf-8', 'ignore')
+                val = option[0][1]
 
                 if key in data[current_section]:
                     data[current_section][key].append(val)
@@ -295,7 +312,7 @@ class _IniDataLoader(object):
         m_data = []
         m_details = {}
 
-        for k, r_obj in reg_list.iteritems():
+        for k, r_obj in reg_list.items():
             reg = self._to_python_reg(r_obj[0])
             m_id = int(r_obj[1])
 
@@ -308,7 +325,7 @@ class _IniDataLoader(object):
 
             m_data.append(obj)
 
-        for m_id, details in details.iteritems():
+        for m_id, details in details.items():
             obj = {}
 
             for i, det in enumerate(details):
@@ -329,7 +346,7 @@ class _IniDataLoader(object):
 
     def _get_robots_object(self, robots, os_details, browser_template, os_template):
         r_data = {}
-        for r_id, robot in robots.iteritems():
+        for r_id, robot in robots.items():
             obj = {}
 
             re = robot[0]
@@ -355,13 +372,13 @@ class _IniDataLoader(object):
 
         return r_data
 
-    def parse_ini_file(self, file_content):
+    def parse_ini_file(self, file_buffer):
         os_template = ['os_family', 'os_name', 'os_url', 'os_company', 'os_company_url', 'os_icon']
         browser_template = ['typ', 'ua_family', 'ua_url', 'ua_company', 'ua_company_url', 'ua_icon', 'ua_info_url']
         robot_template = ['ua_family', 'ua_name', 'ua_url', 'ua_company', 'ua_company_url', 'ua_icon', 'ua_info_url']
         device_template = ['device_type', 'device_icon', 'device_info_url']
 
-        data = self._read_ini_file(file_content)
+        data = self._read_ini_file(file_buffer)
 
         robots = self._get_robots_object(data['robots'], data['os'], robot_template, os_template)
         os = self._get_matching_object(data['os_reg'], data['os'], os_template)

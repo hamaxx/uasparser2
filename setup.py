@@ -50,7 +50,7 @@ if sys.version_info < (2, 7):
 
 setup(
     name='uasparser2',
-    version='0.2',
+    version='0.3',
     author='Jure Ham',
     license='BSD',
     author_email='jure.ham@zemanta.com',

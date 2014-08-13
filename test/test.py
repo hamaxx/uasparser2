@@ -11,7 +11,7 @@ test_uas = json.load(open('test/uas.json', 'r'))
 
 t0 = time.time()
 up = UASParser(mem_cache_size=100, cache_ttl=30)
-print 'load:', time.time() - t0
+print ('load:', time.time() - t0)
 
 t0 = time.time()
 for uas, obj in test_uas:
@@ -21,11 +21,11 @@ for uas, obj in test_uas:
         assert new_obj == obj
     except Exception:
         raise
-        print
-        print uas
+        print()
+        print(uas)
         for k in set(new_obj.keys()) | set(obj.keys()):
             if obj.get(k) != new_obj.get(k):
-                print k, '\t', obj.get(k, '').encode('utf-8'), '\t', new_obj.get(k, '').encode('utf-8')
+                print(k, '\t', obj.get(k, '').encode('utf-8'), '\t', new_obj.get(k, '').encode('utf-8'))
 
-print
-print 'parse:', time.time() - t0
+print()
+print ('parse:', time.time() - t0)
