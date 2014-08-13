@@ -30,8 +30,6 @@ class UASParser(object):
 
     def __init__(self, cache_dir=None, mem_cache_size=1000, cache_ttl=None):
         """
-        Create an UASparser to parse useragent strings.
-        cache_dir should be appointed or set to the path of program by default
         Args:
             cache_dir: String, path to the cache dir for useragent parsing data, default is /tmp.
             cache_ttl: Int, ttl for useragent parsing data cache in seconds, default is never.
