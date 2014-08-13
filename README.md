@@ -33,6 +33,28 @@ Usage:
 
 	uas_parser.update_data()
 
+Docs:
+-----
+
+    class UASParser(__builtin__.object)
+     |  Methods defined here:
+     |  
+     |  __init__(self, cache_dir=None, mem_cache_size=1000, cache_ttl=None)
+     |      Create an UASparser to parse useragent strings.
+     |      cache_dir should be appointed or set to the path of program by default
+     |      Args:
+     |          cache_dir: String, path to the cache dir for useragent parsing data, default is /tmp.
+     |          cache_ttl: Int, ttl for useragent parsing data cache in seconds, default is never.
+     |                     Cache ttl is only checked on init when data is loaded.
+     |          mem_cache_size: Int, number of parsed useragents to cache, default is 1000.
+     |  
+     |  parse(self, useragent)
+     |      Get the information of an useragent string
+     |      Args:
+     |          useragent: String, an useragent string
+     |  
+     |  update_data(self)
+     |      Fetch useragent parsing data from http://user-agent-string.info/ and update local cache
 
 Speed comparison:
 -----------------

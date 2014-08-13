@@ -48,7 +48,7 @@ class UASParser(object):
         self._ini_data_loader = IniDataLoader()
         self._uas_matcher = None
 
-        self.load_data()
+        self._load_data()
 
     def _get_cache_file_name(self, cache_dir):
         cache_dir = cache_dir or DEFAULT_TMP_DIR
@@ -111,6 +111,9 @@ class UASParser(object):
         self._uas_matcher = UASMatcher(cache_data['data'])
 
     def update_data(self):
+        """
+        Fetch useragent parsing data from http://user-agent-string.info/ and update local cache
+        """
         try:
             cache_file = open(self._cache_file_name, 'wb')
             ini_file = self._fetch_url(INI_URL)
@@ -131,7 +134,7 @@ class UASParser(object):
 
         return True
 
-    def load_data(self):
+    def _load_data(self):
         if self._check_cache():
             self._load_cache()
         else:
@@ -150,4 +153,4 @@ class UASparser(UASParser):
 
     @deprecated
     def loadData(self):
-        return self.load_data()
+        return self._load_data()

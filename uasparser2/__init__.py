@@ -19,5 +19,7 @@ Usage:
 """
 __all__ = ['UASParser', 'UASparser', 'EMPTY_RESULT']
 
-from .uasparser import UASParser, UASparser
+from .uasparser import UASParser
 from .constants import EMPTY_RESULT
+
+from .uasparser import UASparser  # deprecated
