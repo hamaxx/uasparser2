@@ -5,12 +5,12 @@ import time
 
 sys.path.append(os.path.join(os.path.dirname(__file__), os.path.pardir))
 
-from uasparser2 import UASparser
+from uasparser2 import UASParser
 
 test_uas = json.load(open('test/uas.json', 'r'))
 
 t0 = time.time()
-up = UASparser(mem_cache_size=100, cache_ttl=30)
+up = UASParser(mem_cache_size=100, cache_ttl=30)
 print 'load:', time.time() - t0
 
 t0 = time.time()
@@ -20,6 +20,7 @@ for uas, obj in test_uas:
 
         assert new_obj == obj
     except Exception:
+        raise
         print
         print uas
         for k in set(new_obj.keys()) | set(obj.keys()):
