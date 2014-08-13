@@ -70,18 +70,25 @@ class UASException(Exception):
 
 class UASparser(object):
 
-    def __init__(self, cache_dir=None, mem_cache_size=0):
+    def __init__(self, cache_dir=None, mem_cache_size=1000, cache_ttl=None):
         """
         Create an UASparser to parse useragent strings.
         cache_dir should be appointed or set to the path of program by default
+        Args:
+            cache_dir: String, path to the cache dir for useragent parsing data, default is /tmp.
+            cache_ttl: Int, ttl for useragent parsing data cache in seconds, default is never.
+                       Cache ttl is only checked on init when data is loaded.
+            mem_cache_size: Int, number of parsed useragents to cache, default is 1000.
         """
 
         self._cache_dir = cache_dir or DEFAULT_TMP_DIR
         if not os.access(self._cache_dir, os.W_OK):
             raise UASException("Cache directory %s is not writable." % self._cache_dir)
         self._cache_file_name = os.path.join(self._cache_dir, CACHE_FILE_NAME)
+        self._cache_ttl = cache_ttl
 
-        self._mem_cache = mem_cache_size and SimpleCache(cache_size=mem_cache_size)
+        self._mem_cache_size = mem_cache_size
+        self._mem_cache = self._mem_cache_size and SimpleCache(cache_size=self._mem_cache_size)
 
         self.loadData()
 
@@ -300,8 +307,13 @@ class UASparser(object):
             cache_data = pickle.load(open(self._cache_file_name, 'rb'))
         except Exception:
             self.updateData()
-        else:
-            self._data = cache_data['data']
+            return
+
+        if self._cache_ttl is not None and cache_data['timestamp'] < time.time() - self._cache_ttl:
+            self.updateData()
+            return
+
+        self._data = cache_data['data']
 
     def updateData(self):
         try:
@@ -318,6 +330,9 @@ class UASparser(object):
             'timestamp': time.time(),
         }
         pickle.dump(cache_data, cache_file)
+
+        if self._mem_cache:
+            self._mem_cache = SimpleCache(cache_size=self._mem_cache_size)
 
         return True
 
