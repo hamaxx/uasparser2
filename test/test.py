@@ -10,7 +10,7 @@ from uasparser2 import UASParser
 test_uas = json.load(open('test/uas.json', 'r'))
 
 t0 = time.time()
-up = UASParser(mem_cache_size=100, cache_ttl=30)
+up = UASParser(mem_cache_size=100)
 print ('load:', time.time() - t0)
 
 t0 = time.time()
