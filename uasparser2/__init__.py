@@ -21,6 +21,7 @@ Usage:
 import urllib2
 import os
 import re
+import time
 
 try:
     import cPickle as pickle
@@ -32,86 +33,42 @@ try:
 except ImportError:
     from ordereddict import OrderedDict
 
+from .imcache import SimpleCache
+
 
 DEFAULT_TMP_DIR = '/tmp'
+
+INI_URL = 'http://user-agent-string.info/rpc/get_data.php?key=free&format=ini'
+INFO_URL = 'http://user-agent-string.info'
+
+CACHE_FILE_NAME = 'uasparser22_cache.pickle'
+
+EMPTY_RESULT = {
+    'typ': 'unknown',
+    'ua_family': 'unknown',
+    'ua_name': 'unknown',
+    'ua_url': 'unknown',
+    'ua_company': 'unknown',
+    'ua_company_url': 'unknown',
+    'ua_icon': 'unknown.png',
+    'ua_info_url': 'unknown',
+    'device_type': 'unknown',
+    'device_icon': 'unknown.png',
+    'device_info_url': 'unknown',
+    'os_family': 'unknown',
+    'os_name': 'unknown',
+    'os_url': 'unknown',
+    'os_company': 'unknown',
+    'os_company_url': 'unknown',
+    'os_icon': 'unknown.png',
+}
 
 
 class UASException(Exception):
     pass
 
 
-class UASCache(object):
-
-    cache = None
-    cache_size = 0
-
-    stats_hit = 0
-    stats_miss = 0
-
-    def __init__(self, cache_size):
-        if cache_size <= 0:
-            return
-
-        self.cache = OrderedDict()
-        self.cache_size = cache_size
-
-    def insert(self, key, val):
-        if self.cache_size <= 0:
-            return
-
-        try:
-            del self.cache[key]
-
-            self.stats_hit += 1
-        except KeyError:
-            if len(self.cache) > self.cache_size:
-                self.cache.popitem(last=False)
-
-            self.stats_miss += 1
-
-        self.cache[key] = val
-
-    def get(self, key):
-        if self.cache_size <= 0:
-            return
-
-        try:
-            return self.cache[key]
-        except KeyError:
-            return None
-
-
 class UASparser(object):
-
-    ini_url = 'http://user-agent-string.info/rpc/get_data.php?key=free&format=ini'
-    info_url = 'http://user-agent-string.info'
-
-    cache_file_name = 'uasparser21_cache.pickle'
-    cache_dir = ''
-
-    data = None
-
-    mem_cache = None
-
-    empty_result = {
-        'typ': 'unknown',
-        'ua_family': 'unknown',
-        'ua_name': 'unknown',
-        'ua_url': 'unknown',
-        'ua_company': 'unknown',
-        'ua_company_url': 'unknown',
-        'ua_icon': 'unknown.png',
-        'ua_info_url': 'unknown',
-        'device_type': 'unknown',
-        'device_icon': 'unknown.png',
-        'device_info_url': 'unknown',
-        'os_family': 'unknown',
-        'os_name': 'unknown',
-        'os_url': 'unknown',
-        'os_company': 'unknown',
-        'os_company_url': 'unknown',
-        'os_icon': 'unknown.png',
-    }
 
     def __init__(self, cache_dir=None, mem_cache_size=0):
         """
@@ -119,12 +76,12 @@ class UASparser(object):
         cache_dir should be appointed or set to the path of program by default
         """
 
-        self.cache_dir = cache_dir or DEFAULT_TMP_DIR
-        if not os.access(self.cache_dir, os.W_OK):
-            raise UASException("Cache directory %s is not writable." % self.cache_dir)
-        self.cache_file_name = os.path.join(self.cache_dir, self.cache_file_name)
+        self._cache_dir = cache_dir or DEFAULT_TMP_DIR
+        if not os.access(self._cache_dir, os.W_OK):
+            raise UASException("Cache directory %s is not writable." % self._cache_dir)
+        self._cache_file_name = os.path.join(self._cache_dir, CACHE_FILE_NAME)
 
-        self.mem_cache = UASCache(mem_cache_size)
+        self._mem_cache = mem_cache_size and SimpleCache(cache_size=mem_cache_size)
 
         self.loadData()
 
@@ -179,24 +136,28 @@ class UASparser(object):
         if not useragent:
             raise UASException("Excepted argument useragent is not given.")
 
-        result = self.mem_cache.get(useragent)
+        if self._mem_cache:
+            try:
+                return self._mem_cache.get(useragent)
+            except self._mem_cache.CacheMissException:
+                pass
 
-        if not result:
-            data = self.data
-            result = dict(self.empty_result)
+        data = self._data
+        result = dict(EMPTY_RESULT)
 
-            match_robots(data, result) or match_browser(data, result) or match_os(data, result)
-            # Finally try to match the device type.
-            if not match_device(data, result):
-                # Try to match using the type
-                if result['typ'] in ("Other", "Library", "Validator", "Useragent Anonymizer"):
-                    result.update(data['device']['details'][1])
-                elif result['typ'] in ("Mobile Browser", "Wap Browser"):
-                    result.update(data['device']['details'][3])
-                else:
-                    result.update(data['device']['details'][2])
+        match_robots(data, result) or match_browser(data, result) or match_os(data, result)
+        # Finally try to match the device type.
+        if not match_device(data, result):
+            # Try to match using the type
+            if result['typ'] in ("Other", "Library", "Validator", "Useragent Anonymizer"):
+                result.update(data['device']['details'][1])
+            elif result['typ'] in ("Mobile Browser", "Wap Browser"):
+                result.update(data['device']['details'][3])
+            else:
+                result.update(data['device']['details'][2])
 
-        self.mem_cache.insert(useragent, result)
+        if self._mem_cache:
+            self._mem_cache.put(useragent, result)
 
         return result
 
@@ -259,7 +220,7 @@ class UASparser(object):
 
                 for i, det in enumerate(details):
                     if details_template[i] == 'ua_info_url':
-                        det = self.info_url + det
+                        det = INFO_URL + det
 
                     if browser_types and details_template[i] == 'typ':
                         det = browser_types[int(det)][0]
@@ -286,15 +247,15 @@ class UASparser(object):
                 obj['details'] = {'typ': 'Robot'}
 
                 for i, name in enumerate(browser_template):
-                    det = details_browser[i] if len(details_browser) > i else self.empty_result[name]
+                    det = details_browser[i] if len(details_browser) > i else EMPTY_RESULT[name]
 
                     if name == 'ua_info_url':
-                        det = self.info_url + det
+                        det = INFO_URL + det
 
                     obj['details'][name] = det
 
                 for i, name in enumerate(os_template):
-                    det = details_os[i] if len(details_os) > i else self.empty_result[name]
+                    det = details_os[i] if len(details_os) > i else EMPTY_RESULT[name]
                     obj['details'][name] = det
 
                 r_data[re] = obj
@@ -328,30 +289,40 @@ class UASparser(object):
         return context.read()
 
     def _checkCache(self):
-        cache_file = self.cache_file_name
+        cache_file = self._cache_file_name
         if not os.path.exists(cache_file):
             return False
 
         return True
 
+    def _loadCache(self):
+        try:
+            cache_data = pickle.load(open(self._cache_file_name, 'rb'))
+        except Exception:
+            self.updateData()
+        else:
+            self._data = cache_data['data']
+
     def updateData(self):
         try:
-            cache_file = open(self.cache_file_name, 'wb')
-            ini_file = self._fetchURL(self.ini_url)
+            cache_file = open(self._cache_file_name, 'wb')
+            ini_file = self._fetchURL(INI_URL)
             ini_data = self._parseIniFile(ini_file)
         except:
             raise UASException("Failed to download cache data")
 
-        self.data = ini_data
-        pickle.dump(ini_data, cache_file)
+        self._data = ini_data
+
+        cache_data = {
+            'data': ini_data,
+            'timestamp': time.time(),
+        }
+        pickle.dump(cache_data, cache_file)
 
         return True
 
     def loadData(self):
         if self._checkCache():
-            try:
-                self.data = pickle.load(open(self.cache_file_name, 'rb'))
-            except Exception:
-                self.updateData()
+            self._loadCache()
         else:
             self.updateData()
