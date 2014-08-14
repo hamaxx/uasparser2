@@ -34,7 +34,7 @@ class UASMatcher(object):
 
     def _match_os(self, useragent, result):
         for test in self._data['os']['reg']:
-            if test['re'].findall(useragent):
+            if test['re'].search(useragent):
                 result.update(self._data['os']['details'][test['details_key']])
 
                 return True
@@ -42,7 +42,7 @@ class UASMatcher(object):
 
     def _match_device(self, useragent, result):
         for test in self._data['device']['reg']:
-            if test['re'].findall(useragent):
+            if test['re'].search(useragent):
                 result.update(self._data['device']['details'][test['details_key']])
                 return True
 
