@@ -1,5 +1,5 @@
 """
-In-mamory caching module
+In-memory caching module
 
 Fast
         Insert and get <= O(log n)
