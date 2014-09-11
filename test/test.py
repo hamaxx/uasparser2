@@ -20,12 +20,10 @@ for uas, obj in test_uas:
 
         assert new_obj == obj
     except Exception:
-        raise
-        print()
         print(uas)
         for k in set(new_obj.keys()) | set(obj.keys()):
             if obj.get(k) != new_obj.get(k):
-                print(k, '\t', obj.get(k, '').encode('utf-8'), '\t', new_obj.get(k, '').encode('utf-8'))
+                print(k, obj.get(k, '').encode('utf-8'), new_obj.get(k, '').encode('utf-8'))
 
 print()
 print ('parse:', time.time() - t0)

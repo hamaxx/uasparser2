@@ -17,11 +17,14 @@ class UASMatcher(object):
     def _match_browser(self, useragent, result):
         for test in self._data['browser']['reg']:
             test_rg = test['re'].search(useragent)
-            if test_rg and test_rg.lastindex and test_rg.lastindex > 0:
-                browser_version = test_rg.group(1)
-
+            if test_rg:
                 result.update(self._data['browser']['details'][test['details_key']])
-                result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
+
+                if test_rg.lastindex and test_rg.lastindex > 0:
+                    browser_version = test_rg.group(1)
+                    result['ua_name'] = '%s %s' % (result['ua_family'], browser_version)
+                else:
+                    result['ua_name'] = result['ua_family']
 
                 os_key = test['os_details_key']
                 if os_key:
